@@ -10,13 +10,19 @@
     "node": ">=22.0.0"
   },
   "workspaces": [
-    "contract"
+    "contract",
+    "packages/client",
+    "apps/web"
   ],
   "scripts": {
     "compact": "npm run compact --workspace @nightpass/contract",
-    "build": "npm run build --workspace @nightpass/contract",
-    "typecheck": "npm run typecheck --workspace @nightpass/contract",
-    "test": "npm run test --workspace @nightpass/contract",
+    "build": "npm run build --workspace @nightpass/contract && npm run build --workspace @nightpass/client && npm run build --workspace @nightpass/web",
+    "typecheck": "npm run typecheck --workspace @nightpass/contract && npm run typecheck --workspace @nightpass/client && npm run typecheck --workspace @nightpass/web",
+    "test": "npm run test --workspace @nightpass/contract && npm run test --workspace @nightpass/client && npm run test --workspace @nightpass/web",
+    "dev": "npm run dev --workspace @nightpass/web",
+    "build:preview": "npm run build:preview --workspace @nightpass/web",
+    "proof:up": "docker compose -f proof-server.yml up -d --wait",
+    "proof:down": "docker compose -f proof-server.yml down",
     "verify": "npm run compact && npm run typecheck && npm test"
   }
 }

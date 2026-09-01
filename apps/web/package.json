@@ -1,0 +1,44 @@
+{
+  "name": "@nightpass/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "scripts": {
+    "prepare:zk": "node scripts/copy-zk-assets.mjs",
+    "dev": "npm run prepare:zk && vite --mode preprod",
+    "dev:preview": "npm run prepare:zk && vite --mode preview",
+    "build": "npm run prepare:zk && tsc --noEmit && vite build --mode preprod",
+    "build:preview": "npm run prepare:zk && tsc --noEmit && vite build --mode preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/dapp-connector-api": "4.0.1",
+    "@midnight-ntwrk/midnight-js-fetch-zk-config-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "4.1.1",
+    "@midnight-ntwrk/midnight-js-network-id": "4.1.1",
+    "@midnight-ntwrk/midnight-js-protocol": "4.1.1",
+    "@midnight-ntwrk/midnight-js-types": "4.1.1",
+    "@midnight-ntwrk/midnight-js-utils": "4.1.1",
+    "@nightpass/client": "0.1.0",
+    "@nightpass/contract": "0.1.0",
+    "assert": "2.1.0",
+    "buffer": "6.0.3",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "semver": "7.8.4"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "@types/semver": "7.7.1",
+    "@vitejs/plugin-react": "6.0.2",
+    "typescript": "6.0.3",
+    "vite": "8.2.2",
+    "vite-plugin-wasm": "3.6.0",
+    "vitest": "4.1.0"
+  }
+}

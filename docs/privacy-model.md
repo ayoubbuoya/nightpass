@@ -1,6 +1,7 @@
 # NightPass minimal contract privacy model
 
-Status: simulator-only Wave 1 prototype.
+Status: simulator-tested, browser-build-tested Wave 1 prototype. No public
+deployment is recorded yet.
 
 ## Data boundary
 
@@ -13,6 +14,7 @@ Status: simulator-only Wave 1 prototype.
 | Issuer secret | Wallet-local private state | Read by a witness; never disclosed or logged. |
 | Member secret and salt | Wallet-local private state | Read by witnesses; never disclosed or logged. |
 | Authorization outcome | Contract caller/network | The call succeeds or fails; no personal identity is intentionally disclosed. |
+| Browser credential state | Page memory | Cleared on refresh; never written to URLs, local storage, logs, or analytics. |
 
 ## Circuit statements
 
@@ -39,6 +41,13 @@ valid at the exact expiration second and invalid afterward.
   service-specific pseudonyms are not implemented.
 - Simulator tests validate contract semantics, not deployment, wallet storage,
   proving performance, side-channel resistance, or production security.
+- The frontend unlock is local presentation state and can be bypassed with
+  browser developer tools. It does not protect server-side content.
+- The browser app serves the proving keys and ZKIR publicly. These are generated
+  circuit artifacts, not member secrets.
+- The current app uses no third-party fonts, analytics, or error-reporting
+  service. Wallet and Midnight network endpoints still observe normal request
+  and transaction metadata.
 
 The next contract milestone must add narrowly scoped audience and challenge
 binding, plus replay protection, before a protected-service integration can

@@ -8,11 +8,15 @@ coverage/
 
 # Compact compiler output (regenerate with `npm run compact`)
 contract/src/managed/
+apps/web/public/keys/
+apps/web/public/zkir/
 
 # Local environment, wallet, and private-state files
 .env
 .env.*
 !.env.example
+!apps/web/.env.preprod
+!apps/web/.env.preview
 .midnight-state.json
 midnight-level-db/
 
@@ -21,3 +25,5 @@ midnight-level-db/
 .DS_Store
 .idea/
 .vscode/
+dist
+.vite
