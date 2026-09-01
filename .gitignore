@@ -1,0 +1,23 @@
+AGENTS.md
+
+# Dependencies and generated build output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Compact compiler output (regenerate with `npm run compact`)
+contract/src/managed/
+
+# Local environment, wallet, and private-state files
+.env
+.env.*
+!.env.example
+.midnight-state.json
+midnight-level-db/
+
+# Logs and editor files
+*.log
+.DS_Store
+.idea/
+.vscode/

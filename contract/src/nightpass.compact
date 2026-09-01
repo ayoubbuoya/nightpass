@@ -1,0 +1,73 @@
+// SPDX-License-Identifier: Apache-2.0
+
+pragma language_version 0.23;
+
+import CompactStandardLibrary;
+
+// Public state. Commitments are pseudonymous but can still be correlated with
+// their issuance transactions, so they must never contain guessable identity data.
+export sealed ledger issuerCommitment: Bytes<32>;
+export ledger memberships: Map<Bytes<32>, Uint<64>>;
+
+// These witnesses are read from wallet-local private state. Their implementations
+// must never log or transmit the returned values.
+witness localIssuerSecret(): Bytes<32>;
+witness localMemberSecret(): Bytes<32>;
+witness localMemberSalt(): Bytes<32>;
+
+export pure circuit deriveIssuerCommitment(secret: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([
+    pad(32, "nightpass:issuer:v1"),
+    secret
+  ]);
+}
+
+export pure circuit deriveMembershipCommitment(
+  secret: Bytes<32>,
+  salt: Bytes<32>
+): Bytes<32> {
+  return persistentHash<Vector<3, Bytes<32>>>([
+    pad(32, "nightpass:member:v1"),
+    secret,
+    salt
+  ]);
+}
+
+constructor() {
+  issuerCommitment = disclose(deriveIssuerCommitment(localIssuerSecret()));
+}
+
+// Wave 1 test issuance: no payment is collected in this circuit.
+export circuit issueMembership(
+  commitment: Bytes<32>,
+  expiresAt: Uint<64>
+): [] {
+  assert(
+    issuerCommitment == deriveIssuerCommitment(localIssuerSecret()),
+    "Only the issuer can issue a membership"
+  );
+
+  const publicCommitment = disclose(commitment);
+  const publicExpiry = disclose(expiresAt);
+
+  assert(!memberships.member(publicCommitment), "Membership already exists");
+  assert(blockTimeLt(publicExpiry), "Membership expiry must be in the future");
+
+  memberships.insert(publicCommitment, publicExpiry);
+}
+
+// Proves that the caller knows a secret and salt opening a registered,
+// non-expired membership commitment. The expiry instant is inclusive.
+export circuit assertActiveMembership(): [] {
+  const commitment = deriveMembershipCommitment(
+    localMemberSecret(),
+    localMemberSalt()
+  );
+  const publicCommitment = disclose(commitment);
+
+  assert(memberships.member(publicCommitment), "Membership is not registered");
+  assert(
+    blockTimeLte(memberships.lookup(publicCommitment)),
+    "Membership has expired"
+  );
+}

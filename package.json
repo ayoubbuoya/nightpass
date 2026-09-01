@@ -1,0 +1,22 @@
+{
+  "name": "nightpass",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Privacy-preserving membership and access-control infrastructure for Midnight",
+  "license": "Apache-2.0",
+  "packageManager": "npm@11.19.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "workspaces": [
+    "contract"
+  ],
+  "scripts": {
+    "compact": "npm run compact --workspace @nightpass/contract",
+    "build": "npm run build --workspace @nightpass/contract",
+    "typecheck": "npm run typecheck --workspace @nightpass/contract",
+    "test": "npm run test --workspace @nightpass/contract",
+    "verify": "npm run compact && npm run typecheck && npm test"
+  }
+}
