@@ -12,11 +12,19 @@ import {
   ledger,
   pureCircuits,
   type Ledger,
+  type MembershipLeaf,
 } from "../managed/nightpass/contract/index.js";
 import {
   witnesses,
+  type MembershipPath,
   type NightPassPrivateState,
 } from "../private-state.js";
+
+export type PlanPolicy = Readonly<{
+  name: Uint8Array;
+  priceMicroNight: bigint;
+  durationSeconds: bigint;
+}>;
 
 export class NightPassSimulator {
   readonly contract = new Contract<NightPassPrivateState>(witnesses);
@@ -24,9 +32,12 @@ export class NightPassSimulator {
   private contractState: ChargedState;
   private zswapState: EncodedZswapLocalState;
 
-  constructor(issuerPrivateState: NightPassPrivateState) {
+  constructor(issuerPrivateState: NightPassPrivateState, plan: PlanPolicy) {
     const initial = this.contract.initialState(
       createConstructorContext(issuerPrivateState, "0".repeat(64)),
+      plan.name,
+      plan.priceMicroNight,
+      plan.durationSeconds,
     );
 
     this.contractState = initial.currentContractState.data;
@@ -42,10 +53,21 @@ export class NightPassSimulator {
   }
 
   deriveMembershipCommitment(
+    plan: Uint8Array,
     secret: Uint8Array,
     salt: Uint8Array,
   ): Uint8Array {
-    return pureCircuits.deriveMembershipCommitment(secret, salt);
+    return pureCircuits.deriveMembershipCommitment(plan, secret, salt);
+  }
+
+  deriveSessionKey(audience: Uint8Array, challenge: Uint8Array): Uint8Array {
+    return pureCircuits.deriveSessionKey(audience, challenge);
+  }
+
+  // Rebuilds a member's opening path from public ledger state, exactly as the
+  // browser client does. Returns undefined when the leaf is not registered.
+  findMembershipPath(leaf: MembershipLeaf): MembershipPath | undefined {
+    return this.getLedger().memberships.findPathForLeaf(leaf);
   }
 
   issueMembership(
@@ -61,18 +83,30 @@ export class NightPassSimulator {
       expiresAt,
     );
 
-    this.commit(result.context.currentQueryContext.state, result.context.currentZswapLocalState);
+    this.commit(
+      result.context.currentQueryContext.state,
+      result.context.currentZswapLocalState,
+    );
     return this.getLedger();
   }
 
-  assertActiveMembership(
+  proveAccess(
     actor: NightPassPrivateState,
+    audience: Uint8Array,
+    challenge: Uint8Array,
     blockTime: number,
   ): Ledger {
     const context = this.createContext(actor, blockTime);
-    const result = this.contract.impureCircuits.assertActiveMembership(context);
+    const result = this.contract.impureCircuits.proveAccess(
+      context,
+      audience,
+      challenge,
+    );
 
-    this.commit(result.context.currentQueryContext.state, result.context.currentZswapLocalState);
+    this.commit(
+      result.context.currentQueryContext.state,
+      result.context.currentZswapLocalState,
+    );
     return this.getLedger();
   }
 

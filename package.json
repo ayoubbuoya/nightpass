@@ -12,13 +12,14 @@
   "workspaces": [
     "contract",
     "packages/client",
+    "packages/verifier",
     "apps/web"
   ],
   "scripts": {
     "compact": "npm run compact --workspace @nightpass/contract",
-    "build": "npm run build --workspace @nightpass/contract && npm run build --workspace @nightpass/client && npm run build --workspace @nightpass/web",
-    "typecheck": "npm run typecheck --workspace @nightpass/contract && npm run typecheck --workspace @nightpass/client && npm run typecheck --workspace @nightpass/web",
-    "test": "npm run test --workspace @nightpass/contract && npm run test --workspace @nightpass/client && npm run test --workspace @nightpass/web",
+    "build": "npm run build --workspace @nightpass/contract && npm run build --workspace @nightpass/client && npm run build --workspace @nightpass/verifier && npm run build --workspace @nightpass/web",
+    "typecheck": "npm run typecheck --workspace @nightpass/contract && npm run typecheck --workspace @nightpass/client && npm run typecheck --workspace @nightpass/verifier && npm run typecheck --workspace @nightpass/web",
+    "test": "npm run test --workspace @nightpass/contract && npm run test --workspace @nightpass/client && npm run test --workspace @nightpass/verifier && npm run test --workspace @nightpass/web",
     "dev": "npm run dev --workspace @nightpass/web",
     "build:preview": "npm run build:preview --workspace @nightpass/web",
     "proof:up": "docker compose -f proof-server.yml up -d --wait",

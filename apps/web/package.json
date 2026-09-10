@@ -25,6 +25,7 @@
     "@midnight-ntwrk/midnight-js-utils": "4.1.1",
     "@nightpass/client": "0.1.0",
     "@nightpass/contract": "0.1.0",
+    "@nightpass/verifier": "0.1.0",
     "assert": "2.1.0",
     "buffer": "6.0.3",
     "react": "19.2.4",

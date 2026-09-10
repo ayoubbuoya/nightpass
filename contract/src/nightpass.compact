@@ -4,16 +4,71 @@ pragma language_version 0.23;
 
 import CompactStandardLibrary;
 
-// Public state. Commitments are pseudonymous but can still be correlated with
-// their issuance transactions, so they must never contain guessable identity data.
-export sealed ledger issuerCommitment: Bytes<32>;
-export ledger memberships: Map<Bytes<32>, Uint<64>>;
+// ---------------------------------------------------------------------------
+// Public state
+//
+// Everything declared here is readable by anyone through the indexer. The
+// membership set is a Merkle tree so that proving membership never requires
+// disclosing *which* membership is being used: the opening path is supplied as
+// a private witness and only the resulting root is compared on chain.
+// ---------------------------------------------------------------------------
 
-// These witnesses are read from wallet-local private state. Their implementations
-// must never log or transmit the returned values.
+// A registered membership. The commitment hides the member's secret and salt;
+// the expiry is stored in the clear because the access circuit must compare it
+// against trusted block time. See docs/privacy-model.md for the anonymity-set
+// consequence of a per-member expiry value.
+export struct MembershipLeaf {
+  commitment: Bytes<32>;
+  expiresAt: Uint<64>;
+}
+
+// The public receipt a protected service reads to decide whether to open a
+// session. It deliberately contains no member-identifying value: the pseudonym
+// is derived per audience, so two services cannot correlate their records.
+export struct AccessRecord {
+  audience: Bytes<32>;
+  pseudonym: Bytes<32>;
+  expiresAt: Uint<64>;
+}
+
+// Published plan policy. Wave 1 supports exactly one plan per contract.
+export sealed ledger planName: Bytes<32>;
+export sealed ledger planPriceMicroNight: Uint<64>;
+export sealed ledger planDurationSeconds: Uint<64>;
+
+// Domain-separated commitment to the issuer secret. Proves issuer authority
+// without publishing a reusable issuer identity.
+export sealed ledger issuerCommitment: Bytes<32>;
+
+// Historic roots are retained so a member's opening path stays valid when
+// later members are inserted. Depth 10 caps this contract at 1024 memberships.
+export ledger memberships: HistoricMerkleTree<10, MembershipLeaf>;
+
+// sessionKey -> receipt. Insertion is the on-chain replay guard: a given
+// (audience, challenge) pair can be consumed exactly once, by anyone.
+export ledger accessLog: Map<Bytes<32>, AccessRecord>;
+
+// ---------------------------------------------------------------------------
+// Witnesses
+//
+// These are read from wallet-local private state. Their implementations must
+// never log, transmit, or persist the returned values.
+// ---------------------------------------------------------------------------
+
 witness localIssuerSecret(): Bytes<32>;
 witness localMemberSecret(): Bytes<32>;
 witness localMemberSalt(): Bytes<32>;
+
+// The member's opening path into `memberships`, rebuilt locally from public
+// ledger state. It is a witness so the leaf index and contents stay private.
+witness localMembershipPath(): MerkleTreePath<10, MembershipLeaf>;
+
+// ---------------------------------------------------------------------------
+// Derivations
+//
+// Each derivation carries a distinct domain-separation tag so that a value
+// produced for one purpose can never be replayed as a value for another.
+// ---------------------------------------------------------------------------
 
 export pure circuit deriveIssuerCommitment(secret: Bytes<32>): Bytes<32> {
   return persistentHash<Vector<2, Bytes<32>>>([
@@ -22,22 +77,67 @@ export pure circuit deriveIssuerCommitment(secret: Bytes<32>): Bytes<32> {
   ]);
 }
 
+// Binds a credential to one plan: a credential issued for a plan cannot open a
+// leaf registered under a different plan name.
 export pure circuit deriveMembershipCommitment(
+  plan: Bytes<32>,
   secret: Bytes<32>,
   salt: Bytes<32>
 ): Bytes<32> {
-  return persistentHash<Vector<3, Bytes<32>>>([
+  return persistentHash<Vector<4, Bytes<32>>>([
     pad(32, "nightpass:member:v1"),
+    plan,
     secret,
     salt
   ]);
 }
 
-constructor() {
+// A stable per-service identifier. The same member yields a different
+// pseudonym at every audience, so protected services cannot correlate members
+// across unrelated deployments by comparing their access logs.
+export pure circuit deriveServicePseudonym(
+  secret: Bytes<32>,
+  salt: Bytes<32>,
+  audience: Bytes<32>
+): Bytes<32> {
+  return persistentHash<Vector<4, Bytes<32>>>([
+    pad(32, "nightpass:pseudonym:v1"),
+    secret,
+    salt,
+    audience
+  ]);
+}
+
+// The public access-log key. A verifier that issued `challenge` for its own
+// `audience` can compute this itself, so it never has to scan the log.
+export pure circuit deriveSessionKey(
+  audience: Bytes<32>,
+  challenge: Bytes<32>
+): Bytes<32> {
+  return persistentHash<Vector<3, Bytes<32>>>([
+    pad(32, "nightpass:session:v1"),
+    audience,
+    challenge
+  ]);
+}
+
+// ---------------------------------------------------------------------------
+// Circuits
+// ---------------------------------------------------------------------------
+
+constructor(
+  name: Bytes<32>,
+  priceMicroNight: Uint<64>,
+  durationSeconds: Uint<64>
+) {
+  planName = disclose(name);
+  planPriceMicroNight = disclose(priceMicroNight);
+  planDurationSeconds = disclose(durationSeconds);
   issuerCommitment = disclose(deriveIssuerCommitment(localIssuerSecret()));
 }
 
-// Wave 1 test issuance: no payment is collected in this circuit.
+// Wave 1 test issuance: the published price is policy only. This circuit
+// collects no payment and must not be presented as a settled purchase.
 export circuit issueMembership(
   commitment: Bytes<32>,
   expiresAt: Uint<64>
@@ -50,24 +150,67 @@ export circuit issueMembership(
   const publicCommitment = disclose(commitment);
   const publicExpiry = disclose(expiresAt);
 
-  assert(!memberships.member(publicCommitment), "Membership already exists");
   assert(blockTimeLt(publicExpiry), "Membership expiry must be in the future");
 
-  memberships.insert(publicCommitment, publicExpiry);
+  // Guards the subtraction below against Uint<64> underflow before the
+  // published-duration check uses it.
+  assert(
+    publicExpiry > planDurationSeconds,
+    "Membership expiry exceeds the published plan duration"
+  );
+  // expiresAt <= now + duration, expressed with the comparisons the kernel
+  // offers. Keeps the issuer inside the duration policy it published.
+  assert(
+    blockTimeGte(publicExpiry - planDurationSeconds),
+    "Membership expiry exceeds the published plan duration"
+  );
+
+  memberships.insert(
+    MembershipLeaf { commitment: publicCommitment, expiresAt: publicExpiry }
+  );
 }
 
-// Proves that the caller knows a secret and salt opening a registered,
-// non-expired membership commitment. The expiry instant is inclusive.
-export circuit assertActiveMembership(): [] {
-  const commitment = deriveMembershipCommitment(
-    localMemberSecret(),
-    localMemberSalt()
-  );
-  const publicCommitment = disclose(commitment);
+// Proves, to one named audience and against one fresh challenge, that the
+// caller holds an unexpired membership -- without revealing which membership.
+//
+// Public effect: one access-log entry under H(audience, challenge) holding the
+// audience, a per-audience pseudonym, and the membership expiry.
+export circuit proveAccess(audience: Bytes<32>, challenge: Bytes<32>): [] {
+  const path = localMembershipPath();
+  const secret = localMemberSecret();
+  const salt = localMemberSalt();
 
-  assert(memberships.member(publicCommitment), "Membership is not registered");
+  // The caller must actually know the opening of the leaf it is proving, not
+  // merely possess a path copied from public state.
   assert(
-    blockTimeLte(memberships.lookup(publicCommitment)),
-    "Membership has expired"
+    path.leaf.commitment == deriveMembershipCommitment(planName, secret, salt),
+    "Credential does not open the membership record"
   );
+
+  // Only the root is disclosed, never the leaf, its index, or its commitment.
+  assert(
+    memberships.checkRoot(disclose(merkleTreePathRoot<10, MembershipLeaf>(path))),
+    "Membership is not registered"
+  );
+
+  // The expiry instant is inclusive.
+  const publicExpiry = disclose(path.leaf.expiresAt);
+  assert(blockTimeLte(publicExpiry), "Membership has expired");
+
+  const publicAudience = disclose(audience);
+  const publicChallenge = disclose(challenge);
+  const sessionKey = deriveSessionKey(publicAudience, publicChallenge);
+
+  // Replay protection. A challenge is spendable exactly once, so a captured
+  // transaction cannot be resubmitted to open a second session.
+  assert(
+    !accessLog.member(sessionKey),
+    "Access challenge was already used"
+  );
+
+  accessLog.insert(sessionKey, AccessRecord {
+    audience: publicAudience,
+    pseudonym: disclose(deriveServicePseudonym(secret, salt, publicAudience)),
+    expiresAt: publicExpiry
+  });
 }
