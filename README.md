@@ -152,7 +152,12 @@ Compact compiler `0.31.1` available as `compact`.
 npm ci
 npm run verify     # compiles the contract, type-checks, runs all tests
 npm run build      # production bundle
+npm run start      # serves the built bundle from apps/web/dist
 ```
+
+`npm run start` only serves an existing build; run `npm run build` first or it
+exits with a missing-directory error. It uses `vite preview`, a local static
+server intended for checking the production bundle, not for deployment.
 
 `npm run verify` compiles the Compact contract first, so a compilation failure
 surfaces before anything else. Compact output is generated under

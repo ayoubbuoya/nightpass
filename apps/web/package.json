@@ -10,6 +10,7 @@
     "dev:preview": "npm run prepare:zk && vite --mode preview",
     "build": "npm run prepare:zk && tsc --noEmit && vite build --mode preprod",
     "build:preview": "npm run prepare:zk && tsc --noEmit && vite build --mode preview",
+    "start": "vite preview --mode preprod",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "preview": "vite preview"

@@ -22,6 +22,7 @@
     "test": "npm run test --workspace @nightpass/contract && npm run test --workspace @nightpass/client && npm run test --workspace @nightpass/verifier && npm run test --workspace @nightpass/web",
     "dev": "npm run dev --workspace @nightpass/web",
     "build:preview": "npm run build:preview --workspace @nightpass/web",
+    "start": "npm run start --workspace @nightpass/web",
     "proof:up": "docker compose -f proof-server.yml up -d --wait",
     "proof:down": "docker compose -f proof-server.yml down",
     "verify": "npm run compact && npm run typecheck && npm test"

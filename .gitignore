@@ -27,3 +27,6 @@ midnight-level-db/
 .vscode/
 dist
 .vite
+
+
+.dev
