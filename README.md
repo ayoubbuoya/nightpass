@@ -222,8 +222,6 @@ NIGHTPASS_PROOF_PORT=6301 npm run proof:up
 
 For Preview instead of Preprod: `npm run dev:preview --workspace @nightpass/web`.
 
-Then follow [docs/demo-script.md](docs/demo-script.md), which walks the full
-sequence including four distinct rejections.
 
 **Contract address and network:** none recorded yet. No public deployment has
 been made from this repository; the deployment address and transaction hashes
@@ -274,8 +272,8 @@ secrets.
 | [privacy-model.md](docs/privacy-model.md) | Data boundary, per-circuit disclosure, unlinkability limits |
 | [architecture.md](docs/architecture.md) | Components, flow, derivations, trust boundaries, on-chain decision |
 | [threat-model.md](docs/threat-model.md) | Attacker-by-attacker analysis and what is not addressed |
-| [demo-script.md](docs/demo-script.md) | The Wave 1 demo sequence, step by step |
 | [wave-1-deck.md](docs/wave-1-deck.md) | Slide deck content |
+| [NightPass_Pitch_Deck.md](docs/NightPass_Pitch_Deck.md) | Master project pitch deck and Wave 1 deliverables |
 | [wave-progress/Wave_1.md](docs/wave-progress/Wave_1.md) | What this wave delivers, and what changed |
 | [NightPass_Project_Details.md](docs/NightPass_Project_Details.md) | Product and buildathon source of truth |
 
