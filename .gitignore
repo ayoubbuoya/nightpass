@@ -6,10 +6,10 @@ dist/
 coverage/
 *.tsbuildinfo
 
-# Compact compiler output (regenerate with `npm run compact`)
-contract/src/managed/
-apps/web/public/keys/
-apps/web/public/zkir/
+# Compact compiler output (tracked for cloud/Vercel deployment)
+# contract/src/managed/
+# apps/web/public/keys/
+# apps/web/public/zkir/
 
 # Local environment, wallet, and private-state files
 .env
